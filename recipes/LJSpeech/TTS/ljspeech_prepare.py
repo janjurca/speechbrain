@@ -22,7 +22,7 @@ METADATA_CSV = "metadata.csv"
 TRAIN_JSON = "train.json"
 VALID_JSON = "valid.json"
 TEST_JSON = "test.json"
-WAVS = "wavs"
+WAVS = "./"
 
 
 def prepare_ljspeech(
@@ -94,7 +94,7 @@ def prepare_ljspeech(
 
     # Additional check to make sure metadata.csv and wavs folder exists
     assert os.path.exists(meta_csv), "metadata.csv does not exist"
-    assert os.path.exists(wavs_folder), "wavs/ folder does not exist"
+    assert os.path.exists(wavs_folder), f"{wavs_folder} folder does not exist"
 
     msg = "\tCreating json file for ljspeech Dataset.."
     logger.info(msg)
@@ -184,7 +184,9 @@ def split_sets(data_folder, splits, split_ratio):
     session_id_start = "LJ001"
     index_this_session = []
     for i in range(len(meta_csv)):
-        session_id = meta_csv[i][0].split("-")[0]
+        if not meta_csv[i]:
+            continue
+        session_id = meta_csv[i][0].split("/")[0]
         if session_id == session_id_start:
             index_this_session.append(i)
             if i == len(meta_csv) - 1:
@@ -244,12 +246,17 @@ def prepare_json(seg_lst, json_file, wavs_folder, csv_reader):
     for index in seg_lst:
         id = list(csv_reader)[index][0]
         wav = os.path.join(wavs_folder, f"{id}.wav")
-        label = list(csv_reader)[index][2]
+        label = list(csv_reader)[index][1]  # TODO prepare text by numbers and so on
+        if not label.strip():
+            continue
         json_dict[id] = {
             "wav": wav,
             "label": label,
             "segment": True if "train" in json_file else False,
         }
+    for i in range(len(json_dict.keys()) % 2):
+        del json_dict[random.choice(list(json_dict.keys()))]
+    print(len(json_dict.keys()), len(json_dict.keys()) % 2)
 
     # Writing the dictionary to the json file
     with open(json_file, mode="w") as json_f:
